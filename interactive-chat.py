@@ -61,16 +61,39 @@ def get_pet_by_id(pet_id: int) -> str:
         return json.dumps(content, indent=2)
     return f"Error: {result}"
 
+@tool
+def add_pet(name: str, pet_type: str, price: float) -> str:
+    """Add a new pet to the store"""
+    response = mcp_client.post("", json={
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "tools/call",
+        "params": {
+            "name": "PetStoreTarget___AddPet",
+            "arguments": {
+                "name": name,
+                "type": pet_type,
+                "price": price
+            }
+        }
+    })
+    result = response.json()
+    if 'result' in result:
+        content = json.loads(result['result']['content'][0]['text'])
+        return json.dumps(content, indent=2)
+    return f"Error: {result}"
+
 # Create agent
 agent = Agent(
     name="PetStoreAssistant",
     system_prompt="""You are a helpful pet store assistant. You can help customers:
     - Browse available pets
     - Get details about specific pets
+    - Add new pets to the store
     - Answer questions about pets
     
     Always be friendly and helpful!""",
-    tools=[list_pets, get_pet_by_id]
+    tools=[list_pets, get_pet_by_id, add_pet]
 )
 
 print("=" * 70)
