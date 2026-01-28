@@ -9,6 +9,7 @@ Complete working demonstration of AWS AgentCore Gateway integration with API Gat
 - **Cognito** JWT authentication
 - **AI Agent** using Strands framework
 - **End-to-end chatbot** with natural language queries
+- **Full CRUD operations** - Create (POST) and Read (GET) via natural language ✨
 
 ## 🏗️ Architecture
 
@@ -70,11 +71,13 @@ python chatbot-final.py
 - ✅ List available tools via MCP
 - ✅ Call ListPets tool
 - ✅ Call GetPetById tool with parameters
+- ✅ Call AddPet tool (POST method) ✨
 
 ### AI Chatbot Test (`chatbot-final.py`)
 - ✅ Natural language query: "What pets do you have?"
 - ✅ Natural language query: "Tell me about pet ID 2"
 - ✅ Natural language query: "What's the cheapest pet?"
+- ✅ Natural language query: "Add a frog named Sweety for $20" ✨
 
 ## 🔑 Key Findings
 
@@ -102,6 +105,7 @@ apigw.put_method_response(
 Tools exposed as: `{TargetName}___{ToolName}`
 - Example: `PetStoreTarget___ListPets`
 - Example: `PetStoreTarget___GetPetById`
+- Example: `PetStoreTarget___AddPet` ✨
 
 ## 📁 Project Structure
 

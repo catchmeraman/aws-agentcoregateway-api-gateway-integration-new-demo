@@ -59,7 +59,9 @@ Demonstrate AgentCore Gateway's capability to integrate with API Gateway using M
 # Created Pet Store API with 3 endpoints
 - GET /pets - List all pets
 - GET /pets/{petId} - Get specific pet
-- Returns JSON data for 3 sample pets
+- POST /pets - Add new pet ✨
+- Returns JSON data for pets
+- In-memory persistence within Lambda container
 ```
 
 **1.2 API Gateway Configuration**
@@ -69,6 +71,7 @@ Demonstrate AgentCore Gateway's capability to integrate with API Gateway using M
 - Added method response definitions (critical for AgentCore)
 - Deployed to 'prod' stage
 - Granted Lambda invoke permissions
+- Supports GET and POST methods ✨
 ```
 
 **1.3 Cognito User Pool Setup**
@@ -119,7 +122,7 @@ Demonstrate AgentCore Gateway's capability to integrate with API Gateway using M
         "stage": "prod",
         "apiGatewayToolConfiguration": {
           "toolFilters": [
-            {"filterPath": "/pets", "methods": ["GET"]},
+            {"filterPath": "/pets", "methods": ["GET", "POST"]},
             {"filterPath": "/pets/{petId}", "methods": ["GET"]}
           ],
           "toolOverrides": [
@@ -134,6 +137,12 @@ Demonstrate AgentCore Gateway's capability to integrate with API Gateway using M
               "path": "/pets/{petId}",
               "method": "GET",
               "description": "Retrieve a specific pet by ID"
+            },
+            {
+              "name": "AddPet",
+              "path": "/pets",
+              "method": "POST",
+              "description": "Add a new pet to the store"
             }
           ]
         }
@@ -203,10 +212,15 @@ def get_pet_by_id(pet_id: int) -> str:
     """Get details of a specific pet by ID"""
     # MCP protocol call to gateway
 
+@tool
+def add_pet(name: str, pet_type: str, price: float) -> str:
+    """Add a new pet to the store"""
+    # MCP protocol call to gateway
+
 agent = Agent(
     name="PetStoreAssistant",
     system_prompt="You are a helpful pet store assistant...",
-    tools=[list_pets, get_pet_by_id]
+    tools=[list_pets, get_pet_by_id, add_pet]
 )
 ```
 
@@ -230,6 +244,7 @@ while True:
 - ✅ "What pets do you have?" - Listed all pets
 - ✅ "Tell me about pet ID 2" - Returned cat details
 - ✅ "What's the cheapest pet?" - Identified fish at $0.99
+- ✅ "Add a frog named Sweety for $20" - Successfully added new pet ✨
 
 **5.3 Authentication Tests**
 - ✅ ACCESS token validation
@@ -268,11 +283,11 @@ agentcore-gateway-demo/
 #### Quantitative Outcomes
 
 **Infrastructure Deployed:**
-- 1 Lambda function (Python 3.12)
-- 1 API Gateway (2 endpoints)
+- 1 Lambda function (Python 3.12) with GET and POST support
+- 1 API Gateway (3 endpoints: GET /pets, GET /pets/{id}, POST /pets)
 - 1 Cognito User Pool (1 test user)
 - 1 AgentCore Gateway (MCP server)
-- 1 Gateway Target (API Gateway integration)
+- 1 Gateway Target (API Gateway integration with 3 tools)
 - 2 IAM roles (proper permissions)
 
 **Code Delivered:**
@@ -280,6 +295,7 @@ agentcore-gateway-demo/
 - 1,800+ lines of code and documentation
 - 11 files in GitHub repository
 - 100% test pass rate
+- Full CRUD operations (Create via POST, Read via GET) ✨
 
 **Performance Metrics:**
 - Tool discovery: ~200ms
@@ -324,6 +340,7 @@ agentcore-gateway-demo/
 3. Standard protocol implementation (MCP)
 4. Natural language API interaction
 5. Production-ready deployment automation
+6. Full CRUD operations via natural language ✨
 
 **Reusability:**
 - Code templates for similar integrations
@@ -374,6 +391,35 @@ agentcore-gateway-demo/
 3. Add CloudWatch logging and monitoring
 4. Create production-ready error handling
 5. Add rate limiting and throttling
+
+### POST Method Enhancement ✨ (Completed)
+
+**What Was Added:**
+- POST /pets endpoint in Lambda function
+- POST method in API Gateway
+- AddPet tool in AgentCore Gateway
+- Natural language pet creation via chatbot
+
+**Example Usage:**
+```
+User: "Add a frog named Sweety for $20"
+AI: Successfully adds pet and confirms
+User: "What pets do we have now?"
+AI: Shows 4 pets including the newly added frog
+```
+
+**Technical Implementation:**
+- Lambda function validates and creates new pets
+- API Gateway routes POST requests
+- AgentCore Gateway exposes AddPet tool
+- AI agent extracts parameters from natural language
+- MCP protocol handles tool invocation
+
+**Benefits:**
+- Users can add pets using natural language
+- No need to know API syntax or structure
+- AI handles parameter extraction and validation
+- Seamless integration with existing GET operations
 
 ### Future Improvements
 1. Multi-target gateway configuration
