@@ -163,8 +163,19 @@ Costs from: Lambda, API Gateway, Cognito, AgentCore Gateway
 
 ## 📚 Documentation
 
-- [SETUP.md](SETUP.md) - Step-by-step setup guide
+### Core Documentation
+- **[PROJECT_WRITEUP.md](PROJECT_WRITEUP.md)** - Complete STAR method analysis ⭐
+- **[ARCHITECTURE_DIAGRAMS.md](ARCHITECTURE_DIAGRAMS.md)** - 6 detailed architecture diagrams ⭐
+- **[PREREQUISITES.md](PREREQUISITES.md)** - Complete setup requirements and execution steps ⭐
+
+### Additional Guides
+- [SETUP.md](SETUP.md) - Detailed step-by-step setup guide
 - [TROUBLESHOOTING.md](TROUBLESHOOTING.md) - Common issues and solutions
+- [DEMO.md](DEMO.md) - Demo instructions with Q&A preparation
+- [REPOSITORY.md](REPOSITORY.md) - Repository overview
+- [FINAL_SUMMARY.md](FINAL_SUMMARY.md) - Complete project summary
+
+### External Resources
 - [AgentCore Gateway Docs](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/gateway.html)
 - [MCP Specification](https://spec.modelcontextprotocol.io/)
 
