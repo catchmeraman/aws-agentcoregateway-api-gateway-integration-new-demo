@@ -23,8 +23,8 @@ User → AI Agent → AgentCore Gateway (MCP) → API Gateway → Lambda → Dyn
 - **AI Agent** - Strands framework for natural language processing
 - **AgentCore Gateway** - MCP server exposing API as tools
 - **API Gateway** - REST API with GET and POST endpoints
-- **Lambda** - Pet Store business logic
-- **DynamoDB** - Persistent storage for pets (15 initial pets) ✨
+- **Lambda** - Pet Store business logic with DynamoDB integration
+- **DynamoDB** - Persistent storage (15 pets: dogs, cats, fish, birds, etc.) ✨
 - **Cognito** - JWT authentication
 
 ## 📋 Prerequisites
@@ -43,12 +43,13 @@ python deploy.py
 ```
 
 This creates:
-- Lambda function (Pet Store API)
-- API Gateway (REST API with 2 endpoints)
+- DynamoDB table (PetStore with 15 initial pets)
+- Lambda function (Pet Store API with DynamoDB integration)
+- API Gateway (REST API with GET and POST endpoints)
 - Cognito User Pool (authentication)
 - AgentCore Gateway (MCP server)
 - Gateway Target (API Gateway integration)
-- IAM roles (proper permissions)
+- IAM roles (Lambda + DynamoDB permissions, Gateway permissions)
 
 ### 2. Get Authentication Token
 

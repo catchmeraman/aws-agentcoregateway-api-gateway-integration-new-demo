@@ -33,6 +33,7 @@
 │  │  │  Target: PetStoreTarget (API_GATEWAY)              │    │  │
 │  │  │  • Tool: PetStoreTarget___ListPets                 │    │  │
 │  │  │  • Tool: PetStoreTarget___GetPetById               │    │  │
+│  │  │  • Tool: PetStoreTarget___AddPet                   │    │  │
 │  │  │  • Credential: GATEWAY_IAM_ROLE                    │    │  │
 │  │  └─────────────────────────────────────────────────────┘    │  │
 │  └──────────────────────────────────────────────────────────────┘  │
@@ -50,6 +51,7 @@
 │  │  Endpoints:                                                   │  │
 │  │  • GET /pets          → Lambda (List all pets)              │  │
 │  │  • GET /pets/{petId}  → Lambda (Get specific pet)           │  │
+│  │  • POST /pets         → Lambda (Add new pet)                │  │
 │  └──────────────────────────────────────────────────────────────┘  │
 └────────────────────────────────┬────────────────────────────────────┘
                                  │
@@ -64,10 +66,24 @@
 │  │                                                               │  │
 │  │  Business Logic:                                             │  │
 │  │  • Parse request (path, method, parameters)                 │  │
-│  │  • Fetch pet data from in-memory store                      │  │
+│  │  • Query DynamoDB for pet data                              │  │
+│  │  • Handle GET /pets, GET /pets/{id}, POST /pets            │  │
 │  │  • Return JSON response                                     │  │
+│  └──────────────────────────────────────────────────────────────┘  │
+└────────────────────────────────┬────────────────────────────────────┘
+                                 │
+                                 │ boto3 DynamoDB API
+                                 │ GetItem, Scan, PutItem
+                                 ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                      DynamoDB Table (PetStore)                       │
+│  ┌──────────────────────────────────────────────────────────────┐  │
+│  │  Primary Key: id (Number)                                    │  │
+│  │  Billing: PAY_PER_REQUEST                                    │  │
 │  │                                                               │  │
-│  │  Data: 3 pets (Buddy, Whiskers, Nemo)                       │  │
+│  │  Data: 15 pets (dogs, cats, fish, birds, etc.)              │  │
+│  │  • Persistent storage                                        │  │
+│  │  • Survives Lambda container recycling                       │  │
 │  └──────────────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────────────┘
 ```
@@ -216,6 +232,12 @@
 │  │  │    - logs:CreateLogGroup                                 │ │ │
 │  │  │    - logs:CreateLogStream                                │ │ │
 │  │  │    - logs:PutLogEvents                                   │ │ │
+│  │  │                                                           │ │ │
+│  │  │  • DynamoDBAccess (Inline)                               │ │ │
+│  │  │    - dynamodb:GetItem                                    │ │ │
+│  │  │    - dynamodb:PutItem                                    │ │ │
+│  │  │    - dynamodb:Scan                                       │ │ │
+│  │  │    - dynamodb:Query                                      │ │ │
 │  │  └──────────────────────────────────────────────────────────┘ │ │
 │  └────────────────────────────────────────────────────────────────┘ │
 └─────────────────────────────────────────────────────────────────────┘

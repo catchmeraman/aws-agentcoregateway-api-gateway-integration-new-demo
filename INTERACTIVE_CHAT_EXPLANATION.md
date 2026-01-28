@@ -101,8 +101,13 @@ def list_pets() -> str:
 
 **MCP Protocol Flow:**
 ```
-Tool Function → MCP Request → Gateway → API Gateway → Lambda → Response
+Tool Function → MCP Request → Gateway → API Gateway → Lambda → DynamoDB → Response
 ```
+
+**Data Source:**
+- Lambda queries DynamoDB table "PetStore"
+- Returns 15 pets stored persistently
+- Data survives Lambda container recycling
 
 #### Tool 2: Get Pet by ID
 
@@ -143,7 +148,58 @@ MCP request: {"petId": "2"}
   ↓
 API Gateway: GET /pets/2
   ↓
-Lambda returns pet data
+Lambda queries DynamoDB
+  ↓
+Returns pet data
+```
+
+#### Tool 3: Add Pet
+
+```python
+@tool
+def add_pet(name: str, pet_type: str, price: float) -> str:
+    """Add a new pet to the store"""
+    response = mcp_client.post("", json={
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "tools/call",
+        "params": {
+            "name": "PetStoreTarget___AddPet",
+            "arguments": {
+                "name": name,
+                "type": pet_type,
+                "price": price
+            }
+        }
+    })
+    result = response.json()
+    if 'result' in result:
+        content = json.loads(result['result']['content'][0]['text'])
+        return json.dumps(content, indent=2)
+    return f"Error: {result}"
+```
+
+**Key Features:**
+- Takes 3 parameters: name, pet_type, price
+- Sends POST request to API
+- Lambda auto-generates ID
+- Stores in DynamoDB persistently
+
+**Parameter Flow:**
+```
+User: "Add a parrot named Polly for $89.99"
+  ↓
+AI extracts: name="Polly", pet_type="parrot", price=89.99
+  ↓
+Tool called: add_pet("Polly", "parrot", 89.99)
+  ↓
+MCP request: {"name": "Polly", "type": "parrot", "price": 89.99}
+  ↓
+API Gateway: POST /pets
+  ↓
+Lambda writes to DynamoDB
+  ↓
+Returns new pet with ID
 ```
 
 ---
@@ -156,10 +212,11 @@ agent = Agent(
     system_prompt="""You are a helpful pet store assistant. You can help customers:
     - Browse available pets
     - Get details about specific pets
+    - Add new pets to the store
     - Answer questions about pets
     
     Always be friendly and helpful!""",
-    tools=[list_pets, get_pet_by_id]
+    tools=[list_pets, get_pet_by_id, add_pet]
 )
 ```
 
@@ -173,6 +230,7 @@ agent = Agent(
 3. **tools** - Available functions AI can call
    - `list_pets` - For general queries
    - `get_pet_by_id` - For specific pet queries
+   - `add_pet` - For adding new pets
 
 **How AI Decides Which Tool to Use:**
 - Reads tool docstrings
@@ -257,20 +315,22 @@ MCP Request:
     ↓
 Gateway → API Gateway → Lambda
     ↓
-Lambda Response:
+Lambda Response (from DynamoDB):
 [
   {"id": 1, "name": "Buddy", "type": "dog", "price": 249.99},
   {"id": 2, "name": "Whiskers", "type": "cat", "price": 124.99},
-  {"id": 3, "name": "Nemo", "type": "fish", "price": 0.99}
+  {"id": 3, "name": "Nemo", "type": "fish", "price": 0.99},
+  ... (15 pets total)
 ]
     ↓
 Tool returns JSON string
     ↓
 AI generates response:
-"We have 3 wonderful pets available:
+"We have 15 wonderful pets available including:
 🐕 Buddy - Dog ($249.99)
 🐱 Whiskers - Cat ($124.99)
-🐠 Nemo - Fish ($0.99)"
+🐠 Nemo - Fish ($0.99)
+... and 12 more!"
     ↓
 Display to user
 ```
@@ -298,6 +358,8 @@ MCP Request:
 }
     ↓
 Gateway → API Gateway → Lambda
+    ↓
+Lambda queries DynamoDB
     ↓
 Lambda Response:
 {"id": 2, "name": "Whiskers", "type": "cat", "price": 124.99}
@@ -443,7 +505,50 @@ You: Tell me about the cat
 You: What's the cheapest pet?
 You: Show me pet number 1
 You: Which pet costs $124.99?
+You: Add a parrot named Rio for $79.99
 You: quit
+```
+
+### Example 3: Adding a Pet
+
+```
+User: "Add a parrot named Rio for $79.99"
+    ↓
+Agent analyzes query
+    ↓
+AI Decision: Need to add new pet
+AI Extracts: name="Rio", pet_type="parrot", price=79.99
+    ↓
+Calls: add_pet("Rio", "parrot", 79.99)
+    ↓
+MCP Request:
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "PetStoreTarget___AddPet",
+    "arguments": {
+      "name": "Rio",
+      "type": "parrot",
+      "price": 79.99
+    }
+  }
+}
+    ↓
+Gateway → API Gateway → Lambda
+    ↓
+Lambda writes to DynamoDB (auto-generates ID 16)
+    ↓
+Lambda Response:
+{"id": 16, "name": "Rio", "type": "parrot", "price": 79.99}
+    ↓
+Tool returns JSON string
+    ↓
+AI generates response:
+"Great! I've added Rio the parrot to our store for $79.99. 
+The pet has been assigned ID 16."
+    ↓
+Display to user
 ```
 
 ---
