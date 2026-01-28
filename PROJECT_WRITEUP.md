@@ -57,11 +57,13 @@ Demonstrate AgentCore Gateway's capability to integrate with API Gateway using M
 **1.1 Lambda Function Creation**
 ```python
 # Created Pet Store API with 3 endpoints
-- GET /pets - List all pets
-- GET /pets/{petId} - Get specific pet
-- POST /pets - Add new pet ✨
+- GET /pets - List all pets (from DynamoDB)
+- GET /pets/{petId} - Get specific pet (from DynamoDB)
+- POST /pets - Add new pet (to DynamoDB) ✨
 - Returns JSON data for pets
-- In-memory persistence within Lambda container
+- Persistent storage in DynamoDB table
+- Auto-incrementing IDs
+- Decimal handling for prices
 ```
 
 **1.2 API Gateway Configuration**
@@ -85,12 +87,13 @@ Demonstrate AgentCore Gateway's capability to integrate with API Gateway using M
 
 **1.4 IAM Roles Configuration**
 ```json
-// PetStoreLambdaRole - Lambda execution
+// PetStoreLambdaRole - Lambda execution with DynamoDB access
 {
   "Effect": "Allow",
   "Principal": {"Service": "lambda.amazonaws.com"},
   "Action": "sts:AssumeRole"
 }
+// Permissions: CloudWatch Logs + DynamoDB (GetItem, PutItem, Scan, Query)
 
 // AgentCoreGatewayRole - Gateway service role
 {
@@ -99,6 +102,15 @@ Demonstrate AgentCore Gateway's capability to integrate with API Gateway using M
   "Action": "sts:AssumeRole"
 }
 // With execute-api:Invoke permission
+```
+
+**1.5 DynamoDB Table Setup** ✨
+```bash
+# Created PetStore table
+- Primary Key: id (Number)
+- Billing: PAY_PER_REQUEST
+- Initial Data: 15 pets (dogs, cats, fish, birds, hamster, rabbit, turtle, guinea pig, lizard)
+- Persistent storage (survives Lambda container recycling)
 ```
 
 #### Phase 2: AgentCore Gateway Deployment
@@ -237,19 +249,21 @@ while True:
 
 **5.1 MCP Protocol Tests**
 - ✅ Tool discovery (3 tools found)
-- ✅ ListPets invocation (returned 3 pets)
-- ✅ GetPetById invocation (returned specific pet)
+- ✅ ListPets invocation (returned 15 pets from DynamoDB)
+- ✅ GetPetById invocation (returned specific pet from DynamoDB)
+- ✅ AddPet invocation (added pet to DynamoDB with auto-generated ID)
 
 **5.2 AI Agent Tests**
-- ✅ "What pets do you have?" - Listed all pets
+- ✅ "What pets do you have?" - Listed all 15 pets
 - ✅ "Tell me about pet ID 2" - Returned cat details
 - ✅ "What's the cheapest pet?" - Identified fish at $0.99
-- ✅ "Add a frog named Sweety for $20" - Successfully added new pet ✨
+- ✅ "Add a frog named Sweety for $20" - Successfully added new pet (ID 16) ✨
 
-**5.3 Authentication Tests**
-- ✅ ACCESS token validation
-- ✅ Token expiry handling (1 hour)
-- ✅ JWT claims verification
+**5.3 Persistence Tests** ✨
+- ✅ Data survives Lambda container recycling
+- ✅ New pets persist across invocations
+- ✅ Consistent ID generation
+- ✅ Decimal price handling
 
 #### Phase 6: Documentation & Packaging
 
@@ -283,20 +297,21 @@ agentcore-gateway-demo/
 #### Quantitative Outcomes
 
 **Infrastructure Deployed:**
-- 1 Lambda function (Python 3.12) with GET and POST support
+- 1 DynamoDB table (PetStore with 15 initial pets, persistent storage) ✨
+- 1 Lambda function (Python 3.12 with boto3 DynamoDB integration)
 - 1 API Gateway (3 endpoints: GET /pets, GET /pets/{id}, POST /pets)
 - 1 Cognito User Pool (1 test user)
 - 1 AgentCore Gateway (MCP server)
 - 1 Gateway Target (API Gateway integration with 3 tools)
-- 1 DynamoDB table (PetStore with 15 initial pets) ✨
-- 2 IAM roles (proper permissions including DynamoDB access)
+- 2 IAM roles (Lambda + DynamoDB permissions, Gateway permissions)
 
 **Code Delivered:**
 - 5 Python scripts (deployment, testing, chatbot)
-- 1,800+ lines of code and documentation
-- 11 files in GitHub repository
+- 2,000+ lines of code and documentation
+- 15+ files in GitHub repository
 - 100% test pass rate
 - Full CRUD operations (Create via POST, Read via GET) ✨
+- Persistent data storage with DynamoDB ✨
 
 **Performance Metrics:**
 - Tool discovery: ~200ms
