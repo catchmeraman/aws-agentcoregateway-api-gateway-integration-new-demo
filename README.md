@@ -14,10 +14,18 @@ Complete working demonstration of AWS AgentCore Gateway integration with API Gat
 ## 🏗️ Architecture
 
 ```
-User → AI Agent → AgentCore Gateway (MCP) → API Gateway → Lambda → Response
+User → AI Agent → AgentCore Gateway (MCP) → API Gateway → Lambda → DynamoDB
                          ↓
                   Cognito Auth (ACCESS token)
 ```
+
+**Components:**
+- **AI Agent** - Strands framework for natural language processing
+- **AgentCore Gateway** - MCP server exposing API as tools
+- **API Gateway** - REST API with GET and POST endpoints
+- **Lambda** - Pet Store business logic
+- **DynamoDB** - Persistent storage for pets (15 initial pets) ✨
+- **Cognito** - JWT authentication
 
 ## 📋 Prerequisites
 

@@ -288,7 +288,8 @@ agentcore-gateway-demo/
 - 1 Cognito User Pool (1 test user)
 - 1 AgentCore Gateway (MCP server)
 - 1 Gateway Target (API Gateway integration with 3 tools)
-- 2 IAM roles (proper permissions)
+- 1 DynamoDB table (PetStore with 15 initial pets) ✨
+- 2 IAM roles (proper permissions including DynamoDB access)
 
 **Code Delivered:**
 - 5 Python scripts (deployment, testing, chatbot)
@@ -405,7 +406,7 @@ agentcore-gateway-demo/
 User: "Add a frog named Sweety for $20"
 AI: Successfully adds pet and confirms
 User: "What pets do we have now?"
-AI: Shows 4 pets including the newly added frog
+AI: Shows 16 pets including the newly added frog
 ```
 
 **Technical Implementation:**
@@ -420,6 +421,40 @@ AI: Shows 4 pets including the newly added frog
 - No need to know API syntax or structure
 - AI handles parameter extraction and validation
 - Seamless integration with existing GET operations
+
+### DynamoDB Integration ✨ (Completed)
+
+**What Was Added:**
+- DynamoDB table for persistent storage
+- 15 initial pets pre-populated
+- Lambda function updated to use DynamoDB
+- IAM permissions for DynamoDB access
+
+**Example Usage:**
+```
+User: "Add a frog named Sweety for $20"
+AI: Saves to DynamoDB
+[Wait 1 hour - Lambda container recycled]
+User: "What pets do we have?"
+AI: Shows 16 pets including Sweety ✅ PERSISTENT!
+```
+
+**Technical Implementation:**
+- DynamoDB table with PAY_PER_REQUEST billing
+- Lambda uses boto3 to read/write DynamoDB
+- Auto-incrementing pet IDs
+- Decimal handling for prices
+- Error handling for DynamoDB operations
+
+**Benefits:**
+- ✅ **Persistent** - Data survives Lambda recycling
+- ✅ **Shared** - All Lambda containers access same data
+- ✅ **Scalable** - Handles any number of pets
+- ✅ **Fast** - Single-digit millisecond latency
+- ✅ **Cost-effective** - ~$0.01/month for this use case
+
+**Initial Data:**
+15 diverse pets including dogs, cats, fish, birds, hamster, rabbit, turtle, guinea pig, and lizard with prices ranging from $0.99 to $299.99.
 
 ### Future Improvements
 1. Multi-target gateway configuration
