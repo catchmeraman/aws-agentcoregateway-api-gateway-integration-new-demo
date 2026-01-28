@@ -1,0 +1,17 @@
+{
+  "account_id": "YOUR_ACCOUNT_ID",
+  "region": "us-east-1",
+  "api_gateway_id": "66gd6g08ie",
+  "api_gateway_stage": "prod",
+  "api_gateway_endpoint": "https://66gd6g08ie.execute-api.us-east-1.amazonaws.com/prod",
+  "lambda_function_name": "PetStoreFunction",
+  "lambda_arn": "arn:aws:lambda:us-east-1:114805761158:function:PetStoreFunction",
+  "lambda_role_arn": "arn:aws:iam::114805761158:role/PetStoreLambdaRole",
+  "gateway_role_arn": "arn:aws:iam::114805761158:role/AgentCoreGatewayRole",
+  "user_pool_id": "us-east-1_RNmMBC87g",
+  "client_id": "435iqd7cgbn2slmgn0a36fo9lf",
+  "discovery_url": "https://cognito-idp.us-east-1.amazonaws.com/us-east-1_RNmMBC87g/.well-known/openid-configuration",
+  "gateway_id": "YOUR_GATEWAY_ID",
+  "gateway_url": "https://YOUR_GATEWAY_ID.gateway.bedrock-agentcore.us-east-1.amazonaws.com/mcp",
+  "target_id": "1MZ8WVVHZM"
+}

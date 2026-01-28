@@ -1,0 +1,23 @@
+# Tokens and credentials
+*-token.txt
+access-token.txt
+jwt-token.txt
+deployment-config.json
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
