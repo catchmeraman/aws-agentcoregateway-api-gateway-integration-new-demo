@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pet Store Chat</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
+        .container { max-width: 800px; margin: 0 auto; background: white; border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); overflow: hidden; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; }
+        .header h1 { font-size: 28px; margin-bottom: 10px; }
+        .chat-container { height: 500px; overflow-y: auto; padding: 20px; background: #f8f9fa; }
+        .message { margin-bottom: 15px; }
+        .message.user { text-align: right; }
+        .message-content { display: inline-block; max-width: 70%; padding: 12px 18px; border-radius: 18px; white-space: pre-wrap; word-wrap: break-word; }
+        .message.user .message-content { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+        .message.assistant .message-content { background: white; color: #333; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .input-container { padding: 20px; background: white; border-top: 1px solid #e0e0e0; display: flex; gap: 10px; }
+        #userInput { flex: 1; padding: 12px 18px; border: 2px solid #e0e0e0; border-radius: 25px; font-size: 14px; outline: none; }
+        #userInput:focus { border-color: #667eea; }
+        button { padding: 12px 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 25px; cursor: pointer; font-weight: 600; }
+        button:hover { transform: scale(1.05); }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        .loading { display: none; text-align: center; padding: 10px; color: #667eea; }
+        .loading.active { display: block; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🐾 AI Pet Store Assistant</h1>
+            <div>Powered by AgentCore Gateway</div>
+        </div>
+        <div class="chat-container" id="chatContainer">
+            <div class="message assistant">
+                <div class="message-content">👋 Welcome! Ask me about pets or try:
+• "List all pets"
+• "Show me dogs"
+• "Add a dog named Rocky, breed: Bulldog, age: 2, price: $700"</div>
+            </div>
+        </div>
+        <div class="loading" id="loading">🤖 Thinking...</div>
+        <div class="input-container">
+            <input type="text" id="userInput" placeholder="Ask about pets..." autofocus>
+            <button onclick="sendMessage()" id="sendBtn">Send</button>
+        </div>
+    </div>
+
+    <script>
+        const CONFIG = {
+            gatewayUrl: 'https://petstoregateway-remqjziohl.gateway.bedrock-agentcore.us-east-1.amazonaws.com/mcp',
+            userPoolId: 'us-east-1_RNmMBC87g',
+            clientId: '435iqd7cgbn2slmgn0a36fo9lf',
+            region: 'us-east-1'
+        };
+
+        // Handle Enter key
+        document.getElementById('userInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') sendMessage();
+        });
+
+        async function sendMessage() {
+            const input = document.getElementById('userInput');
+            const message = input.value.trim();
+            if (!message) return;
+
+            input.value = '';
+            document.getElementById('sendBtn').disabled = true;
+            document.getElementById('loading').classList.add('active');
+
+            addMessage('user', message);
+
+            try {
+                const response = await callGateway(message);
+                addMessage('assistant', response);
+            } catch (error) {
+                addMessage('assistant', '❌ Error: ' + error.message);
+            }
+
+            document.getElementById('sendBtn').disabled = false;
+            document.getElementById('loading').classList.remove('active');
+            input.focus();
+        }
+
+        async function callGateway(userMessage) {
+            const token = await getToken();
+            const msg = userMessage.toLowerCase();
+            
+            // Add pet
+            if (msg.includes('add') && (msg.includes('pet') || msg.includes('dog') || msg.includes('cat'))) {
+                const nameMatch = userMessage.match(/name[d:\s]+([A-Z][a-z]+)/i);
+                const typeMatch = userMessage.match(/\b(dog|cat|bird|fish|hamster|rabbit|turtle|guinea pig|lizard|frog)\b/i);
+                const breedMatch = userMessage.match(/breed[:\s]+([A-Za-z\s]+?)(?:,|age|\.|$)/i);
+                const ageMatch = userMessage.match(/age[:\s]+(\d+)/i);
+                const priceMatch = userMessage.match(/price[:\s]+\$?(\d+)/i) || userMessage.match(/\$(\d+)/);
+                
+                if (nameMatch && typeMatch) {
+                    const pet = {
+                        name: nameMatch[1],
+                        type: typeMatch[1].toLowerCase(),
+                        breed: breedMatch ? breedMatch[1].trim() : 'Mixed',
+                        age: ageMatch ? parseInt(ageMatch[1]) : 1,
+                        price: priceMatch ? parseInt(priceMatch[1]) : 100
+                    };
+                    
+                    const res = await fetch(CONFIG.gatewayUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                        body: JSON.stringify({
+                            jsonrpc: '2.0', id: 1, method: 'tools/call',
+                            params: { name: 'PetStoreTarget___AddPet', arguments: pet }
+                        })
+                    });
+                    
+                    const data = await res.json();
+                    if (data.error) throw new Error(data.error.message);
+                    
+                    return `✅ Added ${pet.name}!\n\n🐾 ${pet.name}\nType: ${pet.type}\nBreed: ${pet.breed}\nAge: ${pet.age} years\nPrice: $${pet.price}`;
+                }
+                
+                return 'To add a pet, use:\n"Add a dog named Max, breed: Labrador, age: 3, price: $600"';
+            }
+            
+            // List pets
+            const res = await fetch(CONFIG.gatewayUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({
+                    jsonrpc: '2.0', id: 1, method: 'tools/call',
+                    params: { name: 'PetStoreTarget___ListPets', arguments: {} }
+                })
+            });
+
+            const data = await res.json();
+            if (data.error) throw new Error(data.error.message);
+            
+            const pets = JSON.parse(data.result.content[0].text);
+            
+            // List all
+            if (msg.includes('list') || msg.includes('all')) {
+                return `We have ${pets.length} pets:\n\n` + 
+                    pets.map(p => `🐾 ${p.name} - ${p.type} (${p.breed})\n   Age: ${p.age} years | Price: $${p.price}`).join('\n\n');
+            }
+            
+            // Filter by type
+            const type = msg.match(/\b(dog|cat|bird|fish|hamster|rabbit|turtle|guinea pig|lizard|frog)s?\b/i)?.[1];
+            if (type) {
+                const filtered = pets.filter(p => p.type.toLowerCase() === type.toLowerCase());
+                if (filtered.length > 0) {
+                    return `We have ${filtered.length} ${type}${filtered.length > 1 ? 's' : ''}:\n\n` +
+                        filtered.map(p => `🐾 ${p.name} - ${p.breed}\n   Age: ${p.age} years | Price: $${p.price}`).join('\n\n');
+                }
+            }
+            
+            // Search by name
+            const petName = userMessage.match(/\b[A-Z][a-z]+\b/)?.[0];
+            if (petName) {
+                const pet = pets.find(p => p.name.toLowerCase() === petName.toLowerCase());
+                if (pet) {
+                    return `🐾 ${pet.name}\n\nType: ${pet.type}\nBreed: ${pet.breed}\nAge: ${pet.age} years\nPrice: $${pet.price}`;
+                }
+            }
+            
+            // Price
+            if (msg.includes('cheap') || msg.includes('price')) {
+                const sorted = [...pets].sort((a, b) => a.price - b.price);
+                return `Most affordable pets:\n\n` +
+                    sorted.slice(0, 5).map(p => `🐾 ${p.name} - ${p.type}\n   Price: $${p.price}`).join('\n\n');
+            }
+            
+            return `Try:\n• "List all pets"\n• "Show me dogs"\n• "Tell me about Buddy"\n• "What are the cheapest pets?"\n• "Add a dog named Rocky, breed: Bulldog, age: 2, price: $700"`;
+        }
+
+        async function getToken() {
+            const res = await fetch(`https://cognito-idp.${CONFIG.region}.amazonaws.com/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-amz-json-1.1',
+                    'X-Amz-Target': 'AWSCognitoIdentityProviderService.InitiateAuth'
+                },
+                body: JSON.stringify({
+                    AuthFlow: 'USER_PASSWORD_AUTH',
+                    ClientId: CONFIG.clientId,
+                    AuthParameters: { USERNAME: 'testuser', PASSWORD: 'MySecurePass123!' }
+                })
+            });
+            const data = await res.json();
+            return data.AuthenticationResult.AccessToken;
+        }
+
+        function addMessage(type, content) {
+            const container = document.getElementById('chatContainer');
+            const div = document.createElement('div');
+            div.className = `message ${type}`;
+            div.innerHTML = `<div class="message-content">${content.replace(/\n/g, '<br>')}</div>`;
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
+        }
+    </script>
+</body>
+</html>
