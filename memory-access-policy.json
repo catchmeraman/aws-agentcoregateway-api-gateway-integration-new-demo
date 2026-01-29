@@ -1,0 +1,13 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "bedrock-agent-runtime:GetMemory",
+        "bedrock-agent-runtime:PutMemory"
+      ],
+      "Resource": "arn:aws:bedrock-agentcore:us-east-1:114805761158:memory/PetStoreChatMemory-Zhm3u49PiK"
+    }
+  ]
+}
