@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Pet Store Assistant with Memory</title>
+    <script src="https://sdk.amazonaws.com/js/aws-sdk-2.1544.0.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
+        .container { max-width: 800px; margin: 0 auto; background: white; border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); overflow: hidden; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; }
+        .header h1 { font-size: 28px; margin-bottom: 10px; }
+        .header .subtitle { opacity: 0.9; font-size: 14px; }
+        .session-info { background: rgba(255,255,255,0.1); padding: 10px; border-radius: 10px; margin-top: 15px; font-size: 12px; }
+        .chat-container { height: 500px; overflow-y: auto; padding: 20px; background: #f8f9fa; }
+        .message { margin-bottom: 15px; animation: slideIn 0.3s ease; }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .message.user { text-align: right; }
+        .message-content { display: inline-block; max-width: 70%; padding: 12px 18px; border-radius: 18px; word-wrap: break-word; }
+        .message.user .message-content { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+        .message.assistant .message-content { background: white; color: #333; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .message.system .message-content { background: #fff3cd; color: #856404; font-size: 13px; max-width: 100%; text-align: center; }
+        .input-container { padding: 20px; background: white; border-top: 1px solid #e0e0e0; display: flex; gap: 10px; }
+        #userInput { flex: 1; padding: 12px 18px; border: 2px solid #e0e0e0; border-radius: 25px; font-size: 14px; outline: none; transition: border-color 0.3s; }
+        #userInput:focus { border-color: #667eea; }
+        button { padding: 12px 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 25px; cursor: pointer; font-weight: 600; transition: transform 0.2s; }
+        button:hover { transform: scale(1.05); }
+        button:disabled { opacity: 0.5; cursor: not-allowed; transform: scale(1); }
+        .loading { display: none; text-align: center; padding: 10px; color: #667eea; }
+        .loading.active { display: block; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🐾 AI Pet Store Assistant</h1>
+            <div class="subtitle">Powered by AgentCore Gateway + Memory</div>
+            <div class="session-info">
+                <div>💾 Session: <span id="sessionId">Loading...</span></div>
+                <div>🔗 Memory: <span id="memoryStatus">Connecting...</span></div>
+            </div>
+        </div>
+        <div class="chat-container" id="chatContainer"></div>
+        <div class="loading" id="loading">🤖 Thinking...</div>
+        <div class="input-container">
+            <input type="text" id="userInput" placeholder="Ask about pets..." onkeypress="if(event.key==='Enter') sendMessage()">
+            <button onclick="sendMessage()" id="sendBtn">Send</button>
+        </div>
+    </div>
+
+    <script>
+        const CONFIG = {
+            region: 'us-east-1',
+            identityPoolId: 'us-east-1:beef0a8b-da2e-4da4-8282-37455aaa57e7',
+            memoryId: 'PetStoreChatMemory-Zhm3u49PiK',
+            gatewayUrl: 'https://petstoregateway-remqjziohl.gateway.bedrock-agentcore.us-east-1.amazonaws.com/mcp',
+            userPoolId: 'us-east-1_RNmMBC87g',
+            clientId: '435iqd7cgbn2slmgn0a36fo9lf'
+        };
+
+        let sessionId = 'session-' + Date.now();
+        let bedrockRuntime, cognitoIdentity;
+        let conversationHistory = [];
+
+        // Initialize AWS SDK
+        AWS.config.region = CONFIG.region;
+        AWS.config.credentials = new AWS.CognitoIdentityCredentials({
+            IdentityPoolId: CONFIG.identityPoolId
+        });
+
+        AWS.config.credentials.get(function(err) {
+            if (err) {
+                console.error('Credentials error:', err);
+                addMessage('system', '❌ Failed to initialize AWS credentials');
+                return;
+            }
+            bedrockRuntime = new AWS.BedrockAgentRuntime();
+            document.getElementById('sessionId').textContent = sessionId.substring(0, 20) + '...';
+            loadMemory();
+        });
+
+        function loadMemory() {
+            const params = {
+                memoryId: CONFIG.memoryId,
+                sessionId: sessionId,
+                maxResults: 10
+            };
+
+            bedrockRuntime.getMemory(params, function(err, data) {
+                if (err) {
+                    console.log('No previous memory:', err.message);
+                    document.getElementById('memoryStatus').textContent = 'New Session';
+                    addMessage('system', '👋 Welcome! Start a new conversation.');
+                } else if (data.memoryContents && data.memoryContents.length > 0) {
+                    document.getElementById('memoryStatus').textContent = `Loaded ${data.memoryContents.length} messages`;
+                    addMessage('system', `💾 Loaded ${data.memoryContents.length} previous messages`);
+                    data.memoryContents.forEach(item => {
+                        if (item.userMessage) addMessage('user', item.userMessage, false);
+                        if (item.assistantMessage) addMessage('assistant', item.assistantMessage, false);
+                    });
+                } else {
+                    document.getElementById('memoryStatus').textContent = 'Ready';
+                    addMessage('system', '👋 Welcome! Ask me about pets.');
+                }
+            });
+        }
+
+        function saveToMemory(userMsg, assistantMsg) {
+            const params = {
+                memoryId: CONFIG.memoryId,
+                sessionId: sessionId,
+                memoryContents: [{
+                    userMessage: userMsg,
+                    assistantMessage: assistantMsg
+                }]
+            };
+
+            bedrockRuntime.putMemory(params, function(err, data) {
+                if (err) console.error('Memory save error:', err);
+            });
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('userInput');
+            const message = input.value.trim();
+            if (!message) return;
+
+            input.value = '';
+            document.getElementById('sendBtn').disabled = true;
+            document.getElementById('loading').classList.add('active');
+
+            addMessage('user', message);
+
+            try {
+                const response = await callAgentCoreGateway(message);
+                addMessage('assistant', response);
+                saveToMemory(message, response);
+            } catch (error) {
+                addMessage('assistant', '❌ Error: ' + error.message);
+            }
+
+            document.getElementById('sendBtn').disabled = false;
+            document.getElementById('loading').classList.remove('active');
+        }
+
+        async function callAgentCoreGateway(userMessage) {
+            const token = await getAccessToken();
+            
+            const listPetsResponse = await fetch(CONFIG.gatewayUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    jsonrpc: '2.0',
+                    id: 1,
+                    method: 'tools/call',
+                    params: {
+                        name: 'PetStoreTarget___ListPets',
+                        arguments: {}
+                    }
+                })
+            });
+
+            const data = await listPetsResponse.json();
+            
+            if (data.error) throw new Error(data.error.message);
+            
+            const pets = JSON.parse(data.result.content[0].text);
+            
+            if (userMessage.toLowerCase().includes('list') || userMessage.toLowerCase().includes('all pets')) {
+                return `We have ${pets.length} pets:\n\n` + pets.map(p => `🐾 ${p.name} (${p.type}) - ${p.breed}, ${p.age} years old`).join('\n');
+            }
+            
+            const petName = userMessage.match(/\b[A-Z][a-z]+\b/)?.[0];
+            if (petName) {
+                const pet = pets.find(p => p.name.toLowerCase() === petName.toLowerCase());
+                if (pet) {
+                    return `🐾 ${pet.name}\n• Type: ${pet.type}\n• Breed: ${pet.breed}\n• Age: ${pet.age} years\n• Price: $${pet.price}`;
+                }
+            }
+            
+            return `We have ${pets.length} wonderful pets! Try asking:\n• "List all pets"\n• "Tell me about Buddy"\n• "What dogs do you have?"`;
+        }
+
+        async function getAccessToken() {
+            const response = await fetch(`https://cognito-idp.${CONFIG.region}.amazonaws.com/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-amz-json-1.1',
+                    'X-Amz-Target': 'AWSCognitoIdentityProviderService.InitiateAuth'
+                },
+                body: JSON.stringify({
+                    AuthFlow: 'USER_PASSWORD_AUTH',
+                    ClientId: CONFIG.clientId,
+                    AuthParameters: {
+                        USERNAME: 'testuser',
+                        PASSWORD: 'MySecurePass123!'
+                    }
+                })
+            });
+
+            const data = await response.json();
+            return data.AuthenticationResult.AccessToken;
+        }
+
+        function addMessage(type, content, scroll = true) {
+            const container = document.getElementById('chatContainer');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'message-content';
+            contentDiv.textContent = content;
+            
+            messageDiv.appendChild(contentDiv);
+            container.appendChild(messageDiv);
+            
+            if (scroll) container.scrollTop = container.scrollHeight;
+        }
+    </script>
+</body>
+</html>
